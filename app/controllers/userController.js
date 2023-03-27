@@ -1,6 +1,5 @@
 const UserModel = require("../models/Users");
 const AppResponse = require("../services/AppResponse");
-const { MailtrapClient } = require("mailtrap");
 const axios = require('axios');
 const pug = require('pug');
 
@@ -34,7 +33,11 @@ const createUser = async (req, res) => {
 
 const getUsers = async (req, res) => {
     try {
-      const users = await UserModel.find();
+      const { role } = req.query;
+      let users = await UserModel.find();
+      if(role) {
+        users = users.map(user => user.role === role)
+      }
       return AppResponse.success(res, {users})
     } catch (error) {
       return AppResponse.error(
@@ -268,5 +271,5 @@ module.exports = {
   deleteUserByAdmin,
   getUserById,
   forgotPassword,
-  resetPassword
+  resetPassword,
 };

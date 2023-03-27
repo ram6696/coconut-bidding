@@ -33,46 +33,55 @@ const createProduct = async (req, res) => {
 
 const getProducts = async (req, res) => {
     try {
-      const products = await ProductModel.aggregate([{
-        $project: {
-          producerId: 1,
-          name: 1,
-          _id: 1,
-          basePrice: 1,
-          imageUrl: 1,
-          bidStartDate: 1,
-          bidEndDate: 1,
-          noOfUnits: 1,
-          createdAt: 1,
-          updatedAt: 1,
-          productType: 1,
-          dateDiffs: {
-            $dateDiff: {
-              startDate: new Date(),
-              endDate: "$bidEndDate",
-              unit: 'day'
-              
+      const conditions = []
+      const { producerId } = req.query;
+      if(producerId) {
+        conditions.push(producerId)
+      }
+
+      const products = await ProductModel.aggregate([
+        {
+          $match: { $and: conditions },
+        },      
+        {
+          $project: {
+            producerId: 1,
+            name: 1,
+            _id: 1,
+            basePrice: 1,
+            imageUrl: 1,
+            bidStartDate: 1,
+            bidEndDate: 1,
+            noOfUnits: 1,
+            createdAt: 1,
+            updatedAt: 1,
+            productType: 1,
+            dateDiffs: {
+              $dateDiff: {
+                startDate: new Date(),
+                endDate: "$bidEndDate",
+                unit: 'day'
+              }
             }
           }
+        }, {
+          $sort: {
+            dateDiffs: -1
+          }
+        }]);
+        const updatedProducts = []
+        for (const product of products) {
+          updatedProducts.push(await getHighestBidder(product))
         }
-      }, {
-        $sort: {
-          dateDiffs: -1
-        }
-      }]);
-      const updatedProducts = []
-      for (const product of products) {
-        updatedProducts.push(await getHighestBidder(product))
+        return AppResponse.success(res, {products: updatedProducts})
+      } catch (error) {
+        return AppResponse.error(
+          res,
+          'INTERNAL SERVER ERROR',
+          error.message
+        )
       }
-      return AppResponse.success(res, {products: updatedProducts})
-    } catch (error) {
-      return AppResponse.error(
-        res,
-        'INTERNAL SERVER ERROR',
-        error.message
-      )
-    }
-};
+  };
 
 const getProductById = async (req, res) => {
     try {
