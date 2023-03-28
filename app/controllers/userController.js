@@ -33,10 +33,10 @@ const createUser = async (req, res) => {
 
 const getUsers = async (req, res) => {
     try {
-      const { role } = req.query;
+      const { role, currentUserName } = req.query;
       let users = await UserModel.find();
       if(role) {
-        users = users.map(user => user.role === role)
+        users = users.filter(user =>  user.role === role && user.userName !== currentUserName)
       }
       return AppResponse.success(res, {users})
     } catch (error) {

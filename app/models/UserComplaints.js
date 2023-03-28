@@ -13,8 +13,8 @@ const UserComplaintsSchema = new Schema({
     type: String,
     required: true,
   },
-  productInfo: {
-    type: Schema.Types.Mixed,
+  productName: {
+    type: String,
     required: true
   }
 }, {

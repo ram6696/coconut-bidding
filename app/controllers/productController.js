@@ -39,10 +39,14 @@ const getProducts = async (req, res) => {
         conditions.push(producerId)
       }
 
-      const products = await ProductModel.aggregate([
-        {
+      const aggregation = [];
+
+      if(conditions.length) {
+        aggregation.push({
           $match: { $and: conditions },
-        },      
+        })
+      }
+      aggregation.push(
         {
           $project: {
             producerId: 1,
@@ -64,11 +68,16 @@ const getProducts = async (req, res) => {
               }
             }
           }
-        }, {
-          $sort: {
-            dateDiffs: -1
-          }
-        }]);
+        }
+      )
+
+      aggregation.push({
+        $sort: {
+          dateDiffs: -1
+        }
+      })
+
+      const products = await ProductModel.aggregate(aggregation);
         const updatedProducts = []
         for (const product of products) {
           updatedProducts.push(await getHighestBidder(product))

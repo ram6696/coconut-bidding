@@ -6,6 +6,9 @@ const usersController = require("../controllers/userController");
 const productController = require("../controllers/productController");
 const walletController = require("../controllers/walletController");
 const UserComplaints = require("../models/UserComplaints");
+const AppResponse = require("../services/AppResponse");
+const Users = require("../models/Users");
+
 
 /* GET api root */
 rootRoute.get("/status", (req, res, next) => {
@@ -41,13 +44,15 @@ rootRoute.get("/users/:userName/wallets", walletController.getWalletByUserName);
 rootRoute.post("/users/complaints", async (req, res) => {
   try {
     const payload = req.body.complaint;
-    if (!payload.complaintBy || !payload.complaintOn || !payload.productId || !payload.complaintText) {
+    if (!payload.complaintBy || !payload.complaintOn || !payload.productName || !payload.complaint) {
       return AppResponse.badRequest(
         res,
         'MISSING_REQUIRED_FIELDS',
         'MISSING_REQUIRED_FIELDS' 
       ) 
     }
+    const complaintOnDetails = await Users.findById(payload.complaintOn);
+    payload.complaintOn = complaintOnDetails.userName;
     const complaint = await UserComplaints.create(payload)
     return AppResponse.success(res, complaint)
   } catch (error) {
@@ -55,11 +60,12 @@ rootRoute.post("/users/complaints", async (req, res) => {
   }
 });
 
-rootRoute.get("users/complaints", async (req, res) => {
+rootRoute.get("/users/random/complaints", async (req, res) => {
   try {
     const complaints = await UserComplaints.find();
     return AppResponse.success(res, complaints)
   } catch (error) {
+    console.log(error);
     throw error
   }
 })
