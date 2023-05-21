@@ -2,6 +2,7 @@ const UserModel = require("../models/Users");
 const AppResponse = require("../services/AppResponse");
 const axios = require('axios');
 const pug = require('pug');
+const AWS = require('aws-sdk');
 
 const createUser = async (req, res) => {
   try {
@@ -184,7 +185,7 @@ const forgotPassword = async (req, res) => {
     const metaData = {
       name: userInfo.userName,
       email: userInfo.email,
-      url: `http://localhost:${process.env.PORT}/reset-password?email=${userInfo.email}`
+      url: `http://localhost:${process.env.FE_PORT}/reset-password?email=${userInfo.email}`
     }
 
     console.log('before template creation', metaData);
@@ -225,40 +226,46 @@ const renderNotificationTemplate = async (templatePath, data,
     }
 }
 
+const getSESObject = () => {
+  console.log(process.env.SES_ACCESS_KEY, process.env.SES_SECRET_ACCESS_KEY, process.env.SES_REGION);
+  AWS.config.update({
+      accessKeyId: process.env.SES_ACCESS_KEY,
+      secretAccessKey: process.env.SES_SECRET_ACCESS_KEY,
+      region: process.env.SES_REGION,
+  });
+
+  return new AWS.SES({ apiVersion: process.env.SES_API_VERSION });
+}
+
 const sendResetPasswordEmail = async (to, subject, html) => {
   try {
-    const url = process.env.SENDGRID_URL;
-        const options = {
-            headers: {
-                'content-type': 'application/json',
-                'authorization': 'Bearer' + ' ' + process.env.SENDGRID_APIKEY,
-            },
-        };
-
-        const data = {
-            personalizations: [
-                {
-                    to: [
-                        {
-                            email: to,
-                        },
-                    ],
-                    subject,
-                },
-            ],
-            from: {
-                email: process.env.FROM_EMAIL,
-                name: process.env.FROM_NAME,
-            },
-            content: [
-                {
-                    type: 'text/html',
-                    value: html,
-                },
-            ],
-        };
-
-        return axios.post(url, data, options);
+    const params = {
+      Destination: {
+          ToAddresses: [to],
+      },
+      Message: {
+          Body: {
+              Html: {
+                  Charset: 'UTF-8',
+                  Data: html
+              },
+          },
+          Subject: {
+              Charset: 'UTF-8',
+              Data: subject,
+          },
+      },
+      Source: `${process.env.FROM_NAME} <${process.env.FROM_EMAIL}>`,
+    };
+    const ses = getSESObject();
+    ses.sendEmail(params)
+    .promise()
+    .then((data) => {
+      console.log('Email sent:', data);
+    })
+    .catch((err) => {
+      console.error(err, err.stack);
+    })
   } catch (error) {
      console.log(error);
   }
